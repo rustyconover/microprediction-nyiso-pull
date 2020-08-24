@@ -6,19 +6,26 @@ const bent = require("bent");
 const get = bent("GET", 200);
 const parse = require("csv-parse/lib/sync");
 import * as _ from "lodash";
-import { CloudWatchLogsEvent, ScheduledHandler } from "aws-lambda";
+import { ScheduledHandler } from "aws-lambda";
 import moment from "moment";
 
-async function processData() {
+export const handler: ScheduledHandler<any> = async (event) => {
   console.log("Fetching data");
-
   const now = moment().utc().format("YYYYMMDD");
   console.log(now);
+
+  // Its important to use the current date in UTC because that's how the data
+  // is stored.
+  //
+  // The file is updated every five minutes.
   const request = await get(
     `http://mis.nyiso.com/public/csv/pal/${now}pal.csv`
   );
+
+  // Pull back the text body.
   const contents = await request.text();
 
+  // Parse the CSV returned - load is returned in megawatts
   const records: Array<{
     "Time Stamp": string;
     "Time Zone": string;
@@ -30,17 +37,22 @@ async function processData() {
     skip_empty_lines: true,
   });
 
+  // Only deal with records that have a specified load value, the file
+  // can have empty lines.
   const good_records = records.filter((v) => v.Load !== "");
-  //  console.log(JSON.stringify(good_records, null, 2));
 
   const dates = _.groupBy(good_records, "Time Stamp");
+  // Just get the last timestamp.
   const last_time_with_loads: string = Object.keys(dates).sort().reverse()[0];
 
   console.log(last_time_with_loads);
   let total = 0;
   let write_counter = 0;
+
+  // Accumulate all of the write promises so parallelism can be used.
   const writes = [];
 
+  // Loop over the records with the last timestamp and push them to the stream.
   for (const { Name, Load } of dates[last_time_with_loads]) {
     let config = await MicroWriterConfig.create({
       write_key: write_keys[write_counter++],
@@ -60,8 +72,8 @@ async function processData() {
     writes.push(writer.set(`electricity-load-nyiso-${pretty_name}.json`, load));
     total += load;
   }
-  console.log("Overall");
-  console.log(total);
+
+  console.log("Overall load", total);
   {
     let config = await MicroWriterConfig.create({
       write_key: write_keys[write_counter++],
@@ -69,10 +81,7 @@ async function processData() {
     const writer = new MicroWriter(config);
     writes.push(writer.set(`electricity-load-nyiso-overall.json`, total));
   }
+
   // Wait for all of the writes to finish.
   await Promise.all(writes);
-}
-
-export const handler: ScheduledHandler<any> = async (event) => {
-  await processData();
 };
