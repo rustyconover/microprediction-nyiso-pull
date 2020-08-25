@@ -17,7 +17,8 @@
     "csv-parse": "^4.12.0",
     "lodash": "^4.17.20",
     "microprediction": "^1.0.3",
-    "moment": "^2.27.0"
+    "moment": "^2.27.0",
+    "moment-timezone": "^0.5.31"
   },
   "devDependencies": {
     "mocha": "^8.0.1",

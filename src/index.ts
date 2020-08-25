@@ -7,11 +7,11 @@ const get = bent("GET", 200);
 const parse = require("csv-parse/lib/sync");
 import * as _ from "lodash";
 import { ScheduledHandler } from "aws-lambda";
-import moment from "moment";
+import moment from "moment-timezone";
 
 export const handler: ScheduledHandler<any> = async (event) => {
   console.log("Fetching data");
-  const now = moment().utc().format("YYYYMMDD");
+  const now = moment().tz("America/New_York").format("YYYYMMDD");
   console.log(now);
 
   // Its important to use the current date in UTC because that's how the data
