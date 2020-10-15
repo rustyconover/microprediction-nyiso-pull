@@ -1,6 +1,6 @@
 // What this code does is download the latest load information and publishes to microprediction.org
 import { MicroWriter, MicroWriterConfig, MicroReader } from "microprediction";
-import { write_keys, fuel_mix_write_keys, lbmp_write_keys } from "./write-keys";
+import { write_key } from './write-keys';
 const bent = require("bent");
 
 const get = bent("GET", 200);
@@ -50,7 +50,7 @@ async function getLoads() {
   // Loop over the records with the last timestamp and push them to the stream.
   for (const { Name, Load } of dates[last_time_with_loads]) {
     let config = await MicroWriterConfig.create({
-      write_key: write_keys[write_counter++],
+      write_key
     });
     const writer = new MicroWriter(config);
 
@@ -71,7 +71,7 @@ async function getLoads() {
   console.log("Overall load", total);
   {
     let config = await MicroWriterConfig.create({
-      write_key: write_keys[write_counter++],
+      write_key,
     });
     const writer = new MicroWriter(config);
     writes.push(writer.set(`electricity-load-nyiso-overall.json`, total));
@@ -119,8 +119,8 @@ async function getGenerationMixes() {
 
   // Loop over the records with the last timestamp and push them to the stream.
   for (const { "Fuel Category": category, "Gen MW": mw } of dates[last_time]) {
-    let config = await MicroWriterConfig.create({
-      write_key: fuel_mix_write_keys[write_counter++],
+    const config = await MicroWriterConfig.create({
+      write_key
     });
     const writer = new MicroWriter(config);
 
@@ -139,8 +139,6 @@ async function getGenerationMixes() {
 }
 
 async function getLBMP() {
-  const now = moment().tz("America/New_York").format("YYYYMMDD");
-
   // The file is updated every five minutes.
   const request = await get(
     "http://mis.nyiso.com/public/realtime/realtime_zone_lbmp.csv"
@@ -179,7 +177,7 @@ async function getLBMP() {
   // Loop over the records with the last timestamp and push them to the stream.
   for (const { Name: name, "LBMP ($/MWHr)": price } of dates[last_time]) {
     let config = await MicroWriterConfig.create({
-      write_key: lbmp_write_keys[write_counter++],
+      write_key
     });
     const writer = new MicroWriter(config);
 
